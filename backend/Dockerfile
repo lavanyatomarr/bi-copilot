@@ -2,7 +2,6 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# No apt-get needed: psycopg2-binary ships precompiled wheels, so no compiler required.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

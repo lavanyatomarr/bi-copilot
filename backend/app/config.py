@@ -10,5 +10,11 @@ class Settings(BaseSettings):
     # Default matches docker-compose; override via the DATABASE_URL env var.
     database_url: str = "postgresql://app:changeme@db:5432/bicopilot"
 
+    # --- auth (Milestone 2) ---
+    # DEV DEFAULT ONLY. For anything real, set JWT_SECRET in a .env file.
+    jwt_secret: str = "dev-only-change-me-to-a-long-random-string"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60
+
 
 settings = Settings()

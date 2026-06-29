@@ -5,18 +5,23 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .db import ensure_pgvector, get_db
+from .db import Base, engine, ensure_pgvector, get_db
+from .models.user import User  # noqa: F401  (import so the table is registered)
+from .routers import auth
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Runs once when the server starts up.
-    ensure_pgvector()  # make sure the vector extension is available
+    ensure_pgvector()                       # make sure the vector extension is available
+    Base.metadata.create_all(bind=engine)   # create any tables that don't exist yet
     yield
     # (anything after yield would run on shutdown — nothing needed yet)
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+app.include_router(auth.router)             # mounts /auth/register, /auth/login, /auth/me
 
 
 @app.get("/")
