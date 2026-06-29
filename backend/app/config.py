@@ -20,5 +20,12 @@ class Settings(BaseSettings):
     max_upload_mb: int = 25          # reject files bigger than this
     max_rows: int = 200_000          # reject datasets with more rows than this
 
+    # --- LLM (Milestone 4) ---
+    llm_provider: str = "groq"       # "groq" | "mock" (mock = offline, no key needed)
+    groq_api_key: str | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
+    query_row_limit: int = 5000      # auto-LIMIT injected into every generated query
+    query_timeout_seconds: int = 8   # kill any query that runs longer than this
+
 
 settings = Settings()

@@ -17,6 +17,7 @@ services:
 
   backend:
     build: ./backend
+    env_file: .env                  # loads GROQ_API_KEY, JWT_SECRET, etc. into the container
     environment:
       DATABASE_URL: postgresql://app:${DB_PASSWORD:-changeme}@db:5432/bicopilot
     depends_on:
