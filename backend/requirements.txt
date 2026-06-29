@@ -1,0 +1,8 @@
+# Milestone 1 only needs these. We'll add auth/AI/RAG libraries as we reach those steps,
+# so the Docker build stays fast and the failure surface stays small.
+# These pins are known-good starting points — run `pip list --outdated` later to bump them.
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+SQLAlchemy==2.0.34
+psycopg2-binary==2.9.9
+pydantic-settings==2.5.2

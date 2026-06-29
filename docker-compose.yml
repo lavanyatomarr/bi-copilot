@@ -1,0 +1,31 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16   # Postgres 16 with the pgvector extension prebuilt
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: bicopilot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:                    # backend waits until this passes
+      test: ["CMD-SHELL", "pg_isready -U app -d bicopilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"                 # lets you connect from your laptop (e.g. DBeaver) too
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://app:${DB_PASSWORD:-changeme}@db:5432/bicopilot
+    depends_on:
+      db:
+        condition: service_healthy  # don't start backend until db is ready
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app              # live code reload while you develop
+
+volumes:
+  pgdata:
