@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .db import Base, engine, ensure_pgvector, get_db
 from .models.user import User  # noqa: F401  (import so the table is registered)
-from .routers import auth
+from .models.dataset import DatasetMetadata, UploadedDataset  # noqa: F401
+from .routers import auth, datasets
 
 
 @asynccontextmanager
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.include_router(auth.router)             # mounts /auth/register, /auth/login, /auth/me
+app.include_router(datasets.router)         # mounts /datasets/upload, /datasets, ...
 
 
 @app.get("/")

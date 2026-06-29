@@ -6,8 +6,12 @@ psycopg2-binary==2.9.9
 pydantic-settings==2.5.2
 
 # Milestone 2 (auth)
-python-jose[cryptography]==3.3.0   # create & verify JWTs
-passlib[bcrypt]==1.7.4             # password hashing (bcrypt)
-bcrypt==4.0.1                      # pinned: passlib 1.7.4 needs <4.1 to avoid a known warning
-python-multipart==0.0.9           # lets FastAPI read login form data
-email-validator==2.2.0            # validates email format in Pydantic
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.9
+email-validator==2.2.0
+
+# Milestone 3 (data upload + profiling)
+pandas==2.2.2
+openpyxl==3.1.5

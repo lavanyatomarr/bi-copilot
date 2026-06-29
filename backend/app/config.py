@@ -16,5 +16,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
 
+    # --- uploads (Milestone 3) ---
+    max_upload_mb: int = 25          # reject files bigger than this
+    max_rows: int = 200_000          # reject datasets with more rows than this
+
 
 settings = Settings()
