@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import api from '../api'
 import { useDatasets } from '../datasets.jsx'
 import AnswerCard from '../components/AnswerCard.jsx'
 
 export default function Workspace() {
   const { datasets, active, activeId, selectDataset } = useDatasets()
+  const location = useLocation()
   const [question, setQuestion] = useState('')
   const [turns, setTurns] = useState([])     // conversation history (newest last)
   const [suggested, setSuggested] = useState([])
   const threadRef = useRef(null)
+
+  // if we arrived from History with a question to re-ask, drop it in the box
+  useEffect(() => {
+    if (location.state?.prefill) setQuestion(location.state.prefill)
+  }, [location.state])
 
   // load the active dataset's suggested questions as starter prompts
   useEffect(() => {

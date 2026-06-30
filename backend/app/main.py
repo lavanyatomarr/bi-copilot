@@ -9,7 +9,7 @@ from .config import settings
 from .db import Base, engine, ensure_pgvector, ensure_rag, get_db
 from .models.user import User  # noqa: F401  (import so the table is registered)
 from .models.dataset import DatasetMetadata, UploadedDataset  # noqa: F401
-from .routers import analytics, auth, datasets, query
+from .routers import analytics, auth, datasets, history, query
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(auth.router)             # mounts /auth/register, /auth/login
 app.include_router(datasets.router)         # mounts /datasets/upload, /datasets, ...
 app.include_router(query.router)            # mounts /query
 app.include_router(analytics.router)        # mounts /analytics/anomalies, /forecast, /kpis
+app.include_router(history.router)          # mounts /history
 
 
 @app.get("/")
