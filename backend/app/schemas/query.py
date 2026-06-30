@@ -17,3 +17,5 @@ class QueryOut(BaseModel):
     insight: str = ""
     confidence: float = 0.0
     follow_ups: list[str] = []
+    from_cache: bool = False
+    cache_similarity: float | None = None

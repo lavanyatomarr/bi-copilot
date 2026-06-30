@@ -13,6 +13,7 @@ from ..db import engine
 from ..models.dataset import DatasetMetadata, UploadedDataset
 from . import safety_engine
 from . import chart_selector, insight_engine
+from . import embeddings, rag_cache
 from .llm_adapter import get_llm
 
 SQL_SYSTEM = """You are a careful analytics SQL generator for PostgreSQL.
@@ -58,6 +59,30 @@ def _run_readonly(fq_table: str, sql: str) -> list[dict]:
 def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
     schema_desc, allowed_cols = _schema_description(db, ds)
 
+    # 0) HYBRID RAG CACHE: embed the question and look for a near-duplicate past one.
+    embedding = embeddings.embed(question)
+    if embedding:
+        hit = rag_cache.hybrid_lookup(db, ds.user_id, ds.id, question, embedding)
+        if hit and hit["similarity"] >= settings.cache_similarity_threshold:
+            # CACHE HIT: reuse the already-validated SQL. Skip the LLM entirely (fast path).
+            # Still re-validate through the safety engine -- never trust stored SQL blindly.
+            safe_sql = safety_engine.validate(
+                hit["validated_sql"], ds.table_name, allowed_cols, settings.query_row_limit
+            )
+            fq_table = f'"{ds.schema_name}".{ds.table_name}'
+            rows = _run_readonly(fq_table, safe_sql)
+            chart_type = chart_selector.choose_chart(question, rows)
+            rag_cache.record_hit(db, hit["id"])
+            return {
+                "sql": safe_sql,
+                "explanation": "Reused validated SQL from a semantically similar earlier question.",
+                "rows": rows, "row_count": len(rows), "blocked": False,
+                "chart_type": chart_type, "chart_spec": chart_selector.build_spec(chart_type, rows),
+                "insight": f"(cache hit) Answered from a similar earlier question.",
+                "confidence": round(hit["similarity"], 3), "follow_ups": [],
+                "from_cache": True, "cache_similarity": round(hit["similarity"], 3),
+            }
+
     # 1) LLM writes candidate SQL.
     raw = get_llm().complete(
         SQL_SYSTEM,
@@ -79,7 +104,8 @@ def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
                 "rows": [], "row_count": 0, "blocked": False,
                 "chart_type": "table", "chart_spec": {"type": "table", "data": [], "layout": {}},
                 "insight": "No query could be generated for this question.",
-                "confidence": 0.0, "follow_ups": []}
+                "confidence": 0.0, "follow_ups": [],
+                "from_cache": False, "cache_similarity": None}
 
     # 2) Safety engine validates (raises SafetyError if unsafe).
     safe_sql = safety_engine.validate(
@@ -89,6 +115,13 @@ def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
     # 3) Execute read-only against the dataset's real schema.
     fq_table = f'"{ds.schema_name}".{ds.table_name}'
     rows = _run_readonly(fq_table, safe_sql)
+
+    # 3b) Store the validated SQL in the cache for future near-duplicate questions.
+    if embedding:
+        try:
+            rag_cache.store(db, ds.user_id, ds.id, question, safe_sql, embedding)
+        except Exception:
+            pass   # caching is best-effort; never fail the query over it
 
     # 4) Pick a chart (rule-based) and build a Plotly spec.
     chart_type = chart_selector.choose_chart(question, rows)
@@ -108,4 +141,6 @@ def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
         "insight": ins["insight"],
         "confidence": ins["confidence"],
         "follow_ups": ins["follow_ups"],
+        "from_cache": False,
+        "cache_similarity": None,
     }

@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .db import Base, engine, ensure_pgvector, get_db
+from .db import Base, engine, ensure_pgvector, ensure_rag, get_db
 from .models.user import User  # noqa: F401  (import so the table is registered)
 from .models.dataset import DatasetMetadata, UploadedDataset  # noqa: F401
 from .routers import auth, datasets, query
@@ -15,6 +15,7 @@ from .routers import auth, datasets, query
 async def lifespan(app: FastAPI):
     # Runs once when the server starts up.
     ensure_pgvector()                       # make sure the vector extension is available
+    ensure_rag()                            # create the RAG semantic-cache table + indexes
     Base.metadata.create_all(bind=engine)   # create any tables that don't exist yet
     yield
     # (anything after yield would run on shutdown — nothing needed yet)

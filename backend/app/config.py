@@ -27,5 +27,11 @@ class Settings(BaseSettings):
     query_row_limit: int = 5000      # auto-LIMIT injected into every generated query
     query_timeout_seconds: int = 8   # kill any query that runs longer than this
 
+    # --- Hybrid RAG (Milestone 6) ---
+    gemini_api_key: str | None = None
+    embedding_model: str = "gemini-embedding-001"
+    embedding_dim: int = 768
+    cache_similarity_threshold: float = 0.90   # >= this similarity counts as a cache hit
+
 
 settings = Settings()
