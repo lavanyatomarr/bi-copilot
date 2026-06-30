@@ -17,5 +17,10 @@ pandas==2.2.2
 openpyxl==3.1.5
 
 # Milestone 4 (text-to-SQL + safety engine)
-httpx==0.27.2          # calls the Groq API
-sqlglot==30.12.0       # parses SQL into an AST for the safety engine
+httpx==0.27.2
+sqlglot==30.12.0
+
+# Milestone 7 (analytics: anomaly detection + forecasting)
+scikit-learn==1.5.2     # IsolationForest
+statsmodels==0.14.2     # Holt-Winters forecasting
+scipy==1.13.1           # z-score, linear regression trend test

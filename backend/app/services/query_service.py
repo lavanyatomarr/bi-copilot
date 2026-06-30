@@ -14,6 +14,7 @@ from ..models.dataset import DatasetMetadata, UploadedDataset
 from . import safety_engine
 from . import chart_selector, insight_engine
 from . import embeddings, rag_cache
+from . import analytics_engine
 from .llm_adapter import get_llm
 
 SQL_SYSTEM = """You are a careful analytics SQL generator for PostgreSQL.
@@ -56,7 +57,63 @@ def _run_readonly(fq_table: str, sql: str) -> list[dict]:
     return rows
 
 
+def _analytics_intent(question: str) -> str | None:
+    q = question.lower()
+    if any(w in q for w in ["anomaly", "anomalies", "outlier", "unusual", "abnormal"]):
+        return "anomaly"
+    if any(w in q for w in ["forecast", "predict", "projection", "next month", "future", "coming months"]):
+        return "forecast"
+    return None
+
+
+def _pick_columns(db: Session, ds: UploadedDataset, question: str):
+    """Find the measure/date columns a question refers to (by name, else first KPI/date)."""
+    cols = db.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == ds.id).all()
+    q = question.lower()
+    measures = [c.column_name for c in cols if c.semantic_role == "measure"]
+    dates = [c.column_name for c in cols if c.semantic_role == "datetime"]
+    kpis = [c.column_name for c in cols if c.is_kpi] or measures
+    mentioned_measure = next((m for m in measures if m.lower() in q), None)
+    value_col = mentioned_measure or (kpis[0] if kpis else None)
+    date_col = next((d for d in dates if d.lower() in q), None) or (dates[0] if dates else None)
+    return value_col, date_col
+
+
+def _analytics_answer(db: Session, ds: UploadedDataset, question: str, intent: str) -> dict:
+    value_col, date_col = _pick_columns(db, ds, question)
+    base = {"sql": None, "explanation": "", "rows": [], "row_count": 0, "blocked": False,
+            "chart_type": "table", "chart_spec": {"type": "table", "data": [], "layout": {}},
+            "confidence": 0.0, "follow_ups": [], "from_cache": False, "cache_similarity": None}
+
+    if intent == "anomaly":
+        if not value_col:
+            return {**base, "insight": "No numeric column found to check for anomalies."}
+        res = analytics_engine.detect_anomalies(ds.schema_name, ds.table_name, value_col)
+        rows = res.get("anomalies", [])
+        return {**base, "rows": rows, "row_count": len(rows),
+                "explanation": f"Anomaly detection on '{value_col}' using {res.get('method')}.",
+                "insight": f"Found {res.get('count', 0)} anomalies in '{value_col}' "
+                           f"(method: {res.get('method')}). Column mean ~{res.get('column_mean')}.",
+                "confidence": 0.8}
+
+    # forecast
+    if not (value_col and date_col):
+        return {**base, "insight": "Need a date column and a numeric column to forecast."}
+    res = analytics_engine.forecast(ds.schema_name, ds.table_name, date_col, value_col)
+    fc = res.get("forecast", [])
+    spec = chart_selector.build_spec("line", res.get("history", []) + fc) if fc else base["chart_spec"]
+    return {**base, "rows": fc, "row_count": len(fc), "chart_type": "line", "chart_spec": spec,
+            "explanation": f"Forecast of '{value_col}' over '{date_col}' ({res.get('method', '')}).",
+            "insight": res.get("message") or f"Forecasted the next {len(fc)} periods of '{value_col}'.",
+            "confidence": 0.7}
+
+
 def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
+    # If the question is asking for anomalies/forecast, route to the analytics engine.
+    intent = _analytics_intent(question)
+    if intent:
+        return _analytics_answer(db, ds, question, intent)
+
     schema_desc, allowed_cols = _schema_description(db, ds)
 
     # 0) HYBRID RAG CACHE: embed the question and look for a near-duplicate past one.
