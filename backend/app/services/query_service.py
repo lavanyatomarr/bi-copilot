@@ -27,6 +27,15 @@ HARD RULES:
 - If the question cannot be answered from the schema, set "sql" to null and
   explain why in "explanation".
 
+ANSWER-QUALITY RULES (important for good charts and insights):
+- For "which/what has the most/least/highest/lowest" questions, ALWAYS return BOTH
+  the grouping column AND the aggregated value (e.g. SELECT region, SUM(revenue) AS total).
+  Never return just the label by itself.
+- For ranking/"top"/"by" questions, return ALL groups ordered appropriately (do NOT
+  add LIMIT 1) so the result can be charted -- a safety layer caps the row count.
+- Always alias aggregates with a clear name (AS total_revenue, AS customer_count, etc.).
+- Count questions use COUNT(*); totals use SUM(); averages use AVG().
+
 Return STRICT JSON only: {"sql": <string or null>, "explanation": <string>}"""
 
 
