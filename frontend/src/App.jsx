@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth.jsx'
+import { DatasetProvider } from './datasets.jsx'
 import AppShell from './components/AppShell.jsx'
 import Login from './pages/Login.jsx'
 import Workspace from './pages/Workspace.jsx'
+import Datasets from './pages/Datasets.jsx'
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -11,7 +13,7 @@ function Protected({ children }) {
   return children
 }
 
-// Simple placeholders for pages we build in later sub-steps.
+// Placeholder for pages still to come.
 function ComingSoon({ title }) {
   return (
     <div className="page">
@@ -29,14 +31,16 @@ export default function App() {
         path="/*"
         element={
           <Protected>
-            <AppShell>
-              <Routes>
-                <Route path="/" element={<Workspace />} />
-                <Route path="/datasets" element={<ComingSoon title="Datasets" />} />
-                <Route path="/history" element={<ComingSoon title="History" />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </AppShell>
+            <DatasetProvider>
+              <AppShell>
+                <Routes>
+                  <Route path="/" element={<Workspace />} />
+                  <Route path="/datasets" element={<Datasets />} />
+                  <Route path="/history" element={<ComingSoon title="History" />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </AppShell>
+            </DatasetProvider>
           </Protected>
         }
       />
