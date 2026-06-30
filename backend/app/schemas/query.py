@@ -12,3 +12,8 @@ class QueryOut(BaseModel):
     rows: list[dict]
     row_count: int
     blocked: bool = False
+    chart_type: str = "table"
+    chart_spec: dict = {}
+    insight: str = ""
+    confidence: float = 0.0
+    follow_ups: list[str] = []

@@ -12,6 +12,7 @@ from ..config import settings
 from ..db import engine
 from ..models.dataset import DatasetMetadata, UploadedDataset
 from . import safety_engine
+from . import chart_selector, insight_engine
 from .llm_adapter import get_llm
 
 SQL_SYSTEM = """You are a careful analytics SQL generator for PostgreSQL.
@@ -75,7 +76,10 @@ def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
 
     if not candidate_sql:
         return {"sql": None, "explanation": explanation or "Could not answer from this dataset.",
-                "rows": [], "row_count": 0, "blocked": False}
+                "rows": [], "row_count": 0, "blocked": False,
+                "chart_type": "table", "chart_spec": {"type": "table", "data": [], "layout": {}},
+                "insight": "No query could be generated for this question.",
+                "confidence": 0.0, "follow_ups": []}
 
     # 2) Safety engine validates (raises SafetyError if unsafe).
     safe_sql = safety_engine.validate(
@@ -86,10 +90,22 @@ def answer_question(db: Session, ds: UploadedDataset, question: str) -> dict:
     fq_table = f'"{ds.schema_name}".{ds.table_name}'
     rows = _run_readonly(fq_table, safe_sql)
 
+    # 4) Pick a chart (rule-based) and build a Plotly spec.
+    chart_type = chart_selector.choose_chart(question, rows)
+    chart_spec = chart_selector.build_spec(chart_type, rows)
+
+    # 5) Generate an AI insight + confidence + follow-up questions (one LLM call).
+    ins = insight_engine.generate_insight(question, rows)
+
     return {
         "sql": safe_sql,
         "explanation": explanation,
         "rows": rows,
         "row_count": len(rows),
         "blocked": False,
+        "chart_type": chart_type,
+        "chart_spec": chart_spec,
+        "insight": ins["insight"],
+        "confidence": ins["confidence"],
+        "follow_ups": ins["follow_ups"],
     }
