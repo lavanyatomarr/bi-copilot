@@ -28,5 +28,20 @@ services:
     volumes:
       - ./backend:/app              # live code reload while you develop
 
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    environment:
+      VITE_API_URL: http://localhost:8000   # the browser calls the API here
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules   # keep installed deps across restarts
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
 volumes:
   pgdata:
+  frontend_node_modules:
