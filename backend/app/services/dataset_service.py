@@ -57,6 +57,32 @@ def _read_file(file_bytes: bytes, filename: str) -> pd.DataFrame:
     return df
 
 
+def _coerce_dates(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert date-like text columns to real datetimes.
+
+    CSV/Excel load every column as text, so a column like '2024-01-01' becomes a
+    string. Postgres date functions (EXTRACT, DATE_TRUNC, ...) then fail because
+    the column isn't a real date. Here we detect date-looking columns and convert
+    them so they're stored as proper timestamps, and date queries work.
+    """
+    import re
+    date_like = re.compile(r"^\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}")  # 2024-01-01 / 2024/1/1 ...
+    for col in df.columns:
+        # pandas 2.2 may use a 'str'/'string' dtype instead of 'object' for text
+        if not (pd.api.types.is_object_dtype(df[col]) or pd.api.types.is_string_dtype(df[col])):
+            continue
+        sample = df[col].dropna().astype(str).head(50)
+        if sample.empty:
+            continue
+        # only attempt if most sampled values look like dates (avoids touching
+        # numeric/category/id columns)
+        if (sample.str.match(date_like).mean()) >= 0.8:
+            converted = pd.to_datetime(df[col], errors="coerce")
+            if converted.notna().mean() >= 0.8:   # conversion actually worked
+                df[col] = converted
+    return df
+
+
 def _sanitize_columns(df: pd.DataFrame) -> pd.DataFrame:
     seen, new_cols = {}, []
     for col in df.columns:
@@ -72,9 +98,10 @@ def _sanitize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_dataset(db: Session, user_id: int, file_bytes: bytes, filename: str) -> UploadedDataset:
-    # 1) Read + validate, then clean column names.
+    # 1) Read + validate, then clean column names and fix date columns.
     df = _read_file(file_bytes, filename)
     df = _sanitize_columns(df)
+    df = _coerce_dates(df)          # store real dates so date functions work
 
     table_name = _sanitize_identifier(filename.rsplit(".", 1)[0], fallback="dataset")
 
