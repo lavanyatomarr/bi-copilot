@@ -71,7 +71,7 @@ export default function Workspace() {
         <label className="ds-picker">
           <span>Dataset</span>
           <select value={activeId || ''} onChange={(e) => selectDataset(Number(e.target.value))}>
-            {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            {datasets.map((d) => <option key={d.id} value={d.id}>#{d.id} — {d.name}</option>)}
           </select>
         </label>
       </header>

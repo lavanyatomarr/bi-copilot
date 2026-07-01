@@ -124,8 +124,17 @@ def create_dataset(db: Session, user_id: int, file_bytes: bytes, filename: str) 
         # 3) Create an isolated schema and load the data into it.
         with engine.begin() as conn:
             conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
+
+        # Force any datetime columns to a real Postgres TIMESTAMP so date functions
+        # (EXTRACT, DATE_TRUNC, ...) work. Belt-and-suspenders on top of _coerce_dates.
+        from sqlalchemy.types import TIMESTAMP
+        dtype_map = {
+            c: TIMESTAMP() for c in df.columns
+            if pd.api.types.is_datetime64_any_dtype(df[c])
+        }
         df.to_sql(table_name, engine, schema=schema_name,
-                  if_exists="replace", index=False, chunksize=5000, method="multi")
+                  if_exists="replace", index=False, chunksize=5000, method="multi",
+                  dtype=dtype_map or None)
 
         # 4) Profile the data and save per-column metadata.
         profile = profiling_engine.profile_dataframe(df)

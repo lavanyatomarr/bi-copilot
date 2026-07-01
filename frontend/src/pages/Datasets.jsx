@@ -42,6 +42,18 @@ export default function Datasets() {
     }
   }
 
+  async function deleteDataset(id, name, e) {
+    e.stopPropagation()   // don't also trigger the row click
+    if (!confirm(`Delete "${name}"? This removes the dataset and its data.`)) return
+    try {
+      await api.delete(`/datasets/${id}`)
+      if (profileFor === id) { setProfile(null); setProfileFor(null) }
+      await refresh()
+    } catch {
+      setError('Could not delete that dataset.')
+    }
+  }
+
   return (
     <div className="page">
       <header className="page-head">
@@ -72,8 +84,9 @@ export default function Datasets() {
             >
               <div className="ds-name">{d.name}</div>
               <div className="ds-meta">
-                <span className="mono">{d.row_count.toLocaleString()} rows</span>
+                <span className="mono">#{d.id} · {d.row_count.toLocaleString()} rows</span>
                 {d.id === activeId && <span className="ds-active-tag">active</span>}
+                <span className="ds-delete" onClick={(e) => deleteDataset(d.id, d.name, e)} title="Delete dataset">✕</span>
               </div>
             </button>
           ))}
