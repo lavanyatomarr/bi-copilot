@@ -7,11 +7,13 @@ a new question means the same as an earlier one.
 
 Built end to end on a **100% free / open-source stack.**
 
-<!-- After deploying, add your live link here:
-**Live demo:** https://your-app.onrender.com   ·   **Login:** demo@demo.com / demo1234
--->
+**🔗 Live demo:** https://bi-copilot-wgu0.onrender.com
+**Demo login:** `lavanya@test.com` / `MyPassword123`
 
-<!-- Add 2-3 screenshots here once you have them, e.g.:
+> Note: the demo runs on a free tier that sleeps when idle, so the first load may
+> take 30–60 seconds to wake up. After that it's responsive.
+
+<!-- Add screenshots here (see the "Adding screenshots" note at the bottom):
 ![Workspace](docs/workspace.png)
 ![Safety engine tests](docs/safety-tests.png)
 -->
@@ -68,7 +70,9 @@ ask questions like *"which plan earns the most revenue?"* and answers them safel
                              -> read-only execution
                              -> chart + insight + confidence
 
-                    all services run via Docker Compose
+     Local: Docker Compose (db + backend + frontend)
+     Deployed: one Docker image on Render (FastAPI serves the built React app),
+               PostgreSQL + pgvector on Neon
 ```
 
 ---
@@ -79,7 +83,7 @@ ask questions like *"which plan earns the most revenue?"* and answers them safel
 scikit-learn, statsmodels, scipy
 **AI:** Groq (Llama 3.3 70B) for SQL + insights, Google Gemini for embeddings
 **Frontend:** React, Vite, React Router, Axios, Plotly
-**Infra:** Docker Compose
+**Infra:** Docker, Render (app), Neon (database)
 
 ---
 
@@ -109,7 +113,7 @@ scikit-learn, statsmodels, scipy
    - **http://localhost:5173** -- the app (sign up, upload a dataset, ask questions)
    - **http://localhost:8000/docs** -- auto-generated interactive API docs
 
-Stop with `Ctrl+C`. To wipe the database volume: `docker compose down -v`.
+Stop with `Ctrl+C`. To wipe the local database volume: `docker compose down -v`.
 
 ---
 
@@ -138,8 +142,8 @@ cross-table access, hallucinated columns, ALTER, TRUNCATE and unparseable input 
 
 Aggregation questions return the richest charts:
 
-- `Show the number of customers per country`
 - `Show total monthly_revenue by plan`
+- `Show the number of customers per country`
 - `Count customers by acquisition channel`
 - `Show the trend of monthly_revenue over signup_date`
 - `Find anomalies in monthly_revenue`
@@ -154,16 +158,18 @@ To see the safety engine refuse a write: `Delete all the customers`.
 ```
 backend/
   app/
-    routers/      auth, datasets, query, analytics endpoints
+    routers/      auth, datasets, query, analytics, history endpoints
     services/     safety_engine, query_service, rag_cache, embeddings,
                   chart_selector, insight_engine, analytics_engine, profiling_engine
     models/       SQLAlchemy models
     tests/        safety-engine attack suite
 frontend/
   src/
-    pages/        Login, Datasets, Workspace
+    pages/        Login, Datasets, Workspace, History
     components/   AppShell, AnswerCard, ChartRenderer, ConfidenceBadge, RoleBadge
-docker-compose.yml
+Dockerfile          # production build (React + FastAPI in one image)
+docker-compose.yml  # local development
+render.yaml         # deploy blueprint
 ```
 
 ---
